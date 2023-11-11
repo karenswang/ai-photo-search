@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11 
+    commands:
+      # - echo Installing source dependencies...
+      # TODO: install dependencies, currently functions don't seem to contain external dependencies needed
+      # - pip install -r requirements.txt -t ./build/
+
+  build:
+    commands:
+      - echo Build phase...
+      - zip LF1.zip LF1.py
+      - zip LF2.zip LF2.py
+      - echo "Build completed."
+
+artifacts:
+  files:
+    - LF1.zip
+    - LF2.zip
+
