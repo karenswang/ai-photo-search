@@ -1,0 +1,371 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to create resources for a photo album application
+
+# Lex bot ids, commented out for now
+# Parameters:
+#   LexBotId:
+#     Type: String
+#     Description: The ID of the Lex bot
+#   LexBotAliasId:
+#     Type: String
+#     Description: The ID of the Lex bot alias
+
+Resources:
+  # OpenSearch
+  PhotosOpenSearchDomain: # logical ID
+    Type: AWS::OpenSearchService::Domain
+    Properties:
+      DomainName: 'photos'
+      EngineVersion: 'OpenSearch_2.9'
+      ClusterConfig:
+        InstanceType: t3.small.search
+        InstanceCount: 1
+      # policy for this specific OpenSearch domain to open for lambda operations
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !GetAtt LambdaExecutionRole.Arn
+            Action: "es:*"
+            Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}/*"
+  
+  # S3 for storing photos
+  PhotosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 'B2'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: "s3:ObjectCreated:Put"
+            Function: !GetAtt IndexPhotosFunction.Arn # get the arn of the LF1
+    # # policy for this specific S3 bucket to open for API Gateway operations (put object)
+    # BucketPolicy:
+    #   Type: AWS::S3::BucketPolicy
+    #   Properties:
+    #     Bucket: !Ref PhotosBucket
+    #     PolicyDocument:
+    #       Version: '2012-10-17'
+    #       Statement:
+    #         - Effect: Allow
+    #           Principal: '*'
+    #           Action:
+    #             - 's3:PutObject'
+    #           Resource: !Sub 'arn:aws:s3:::${PhotosBucket}/*'
+    #           Condition:
+    #             StringEquals:
+    #               'aws:SourceArn': !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AlbumApi}/*'
+  
+  # Bucket policy to allow API Gateway PUT operations
+  PhotosBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PhotosBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {"Service": "apigateway.amazonaws.com"}
+            Action: "s3:PutObject"
+            Resource: !Sub "arn:aws:s3:::${PhotosBucket}/*"
+
+  # LF1 for indexing photos
+  IndexPhotosFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "index-photos"
+      Handler: "LF1.lambda_handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: "python3.11"
+      # Code: this will be handled by CodePipeline
+
+  # LF2 for searching photos
+  SearchPhotosFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "search-photos"
+      Handler: "LF2.lambda_handler" 
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: "python3.11"
+      # Code: this will be handled by CodePipeline
+
+  # provision permission for S3 to invoke LF1 (indexing)
+  LambdaPermissionForS3:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref IndexPhotosFunction
+        Action: "lambda:InvokeFunction"
+        Principal: "s3.amazonaws.com"
+        SourceArn: !GetAtt PhotosBucket.Arn
+
+  # Permissions given to lambda functions to interact with other services
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com" # Lambda is the service that will assume this role
+            Action: "sts:AssumeRole"
+      Policies:
+        # S3, OpenSearch, Rekognition permissions
+        - PolicyName: "LambdaOpenSearchS3RekognitionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: 
+                  - "es:*"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "rekognition:DetectLabels"
+                Resource: "*"
+        # Lex permissions
+        - PolicyName: "LambdaLexPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: 
+                  - "lex:PostText"
+                  - "lex:PostContent"
+                  - "lex:RecognizeText"
+                Resource: "*"
+  
+  # Permission for Lex to invoke the Lambda function
+  LambdaPermissionForLex:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SearchPhotosFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "lexv2.amazonaws.com"
+      SourceArn: !Sub "arn:aws:lex:${AWS::Region}:${AWS::AccountId}:bot-alias/WRDYKDEUOV/SLVZYGVSIQ" # update botID/botAliasID whenever they change
+
+  # API Gateway
+  AlbumApi:
+  Type: AWS::ApiGateway::RestApi
+  Properties:
+    Name: AI Photo Search API
+    Body:
+      # swagger file
+      swagger: '2.0'
+      info:
+        title: AI Photo Search
+        description: 'AI Photo Search application, built during the Cloud and Big Data course at Columbia University.'
+        version: 1.0.0
+      schemes:
+        - https
+      basePath: /v1
+      produces:
+        - application/json
+      paths:
+        /search:
+          get:
+            summary: photo search method
+            description: |
+              This API takes in a search query as a query parameter and returns zero or more photos that match the search query.
+            operationId: searchPhotos
+            parameters:
+              - in: query
+                name: q
+                schema:
+                  type: string
+                description: the string to be searched
+            produces:
+              - application/json
+            responses:
+              '200':
+                description: search results
+                schema:
+                  $ref: '#/definitions/SearchResponse'
+              '403':
+                description: Unauthorized
+                schema:
+                  $ref: '#/definitions/Error'
+              '500':
+                description: Unexpected error
+                schema:
+                  $ref: '#/definitions/Error'
+            # specifies how the endpoint should forward the request to a backend Lambda function
+            x-amazon-apigateway-integration:
+              uri:
+                Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchPhotosFunction.Arn}/invocations"
+              responses:
+                default:
+                  statusCode: "200"
+              passthroughBehavior: "when_no_match"
+              httpMethod: "POST"
+              type: "aws_proxy"
+            # Enable CORS
+            options:
+              summary: CORS support
+              description: |
+                Enable CORS by returning the correct headers
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              responses:
+                '200':
+                  description: Successful response
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              # mock response: return a predetermined response without forwarding the request to any backend service
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: ""
+        /upload:
+          put:
+            summary: photo upload method
+            description: |
+              This API takes in the multi-part body sent to it (ex. a photo) and uploads it to an S3 bucket.
+            operationId: uploadPhoto
+            consumes:
+              - image/png
+              - image/jpg
+              - image/jpeg
+            produces:
+              - application/json
+            # allow user specified labels
+            parameters:
+              - in: header
+                name: x-amz-meta-customLabels
+                type: string
+                required: false
+                description: Custom labels specified by the user
+            responses:
+              '200':
+                description: S3 PUT operation response
+                schema:
+                  type: object
+              '403':
+                description: Unauthorized
+                schema:
+                  $ref: '#/definitions/Error'
+              '500':
+                description: Unexpected error
+                schema:
+                  $ref: '#/definitions/Error'
+            # specifies how the endpoint should forward the request to backend service (S3)
+            x-amazon-apigateway-integration:
+              uri: 
+                Fn::Sub: "arn:aws:apigateway:${AWS::Region}:s3:path/${PhotosBucket}"
+              responses:
+                default:
+                  statusCode: "200"
+              passthroughBehavior: "when_no_match"
+              # allow custom labels to be passed to S3
+              requestParameters:
+                integration.request.header.x-amz-meta-customLabels: "method.request.header.x-amz-meta-customLabels"
+              httpMethod: "PUT"
+              type: "aws_proxy"
+            # Enable CORS
+            options:
+              summary: CORS support
+              description: Enable CORS by returning the correct headers
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              responses:
+                '200':
+                  description: Successful response
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              # mock response: return a predetermined response without forwarding the request to any backend service
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-amz-meta-customLabels'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: ""
+      definitions:
+        SearchResponse:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: '#/definitions/Photo'
+        Photo:
+          type: object
+          properties:
+            url:
+              type: string
+            labels:
+              type: array
+              items:
+                type: string
+        Error:
+          type: object
+          properties:
+            code:
+              type: integer
+              format: int32
+            message:
+              type: string
+
+    AlbumApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: AlbumApiKey
+      Enabled: true
+
+  # AlbumApiUsagePlan:
+  #   Type: AWS::ApiGateway::UsagePlan
+  #   Properties:
+  #     ApiStages:
+  #       - ApiId: !Ref AlbumApi
+  #         Stage: prod
+  #     Description: Usage plan for my API
+  #     UsagePlanName: AlbumApiUsagePlan
+  #     ApiKeyIds:
+  #       - !Ref AlbumApiKey
+
+  AlbumApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: AlbumApi
+    Properties:
+      RestApiId: !Ref AlbumApi
+      StageName: prod
+    # # Use a timestamp to ensure that a new deployment is created when the stack is updated
+    # replaced by codepipeline
+    # Metadata:
+    #   DeploymentTimestamp: !Sub ${AWS::StackName}-${AWS::Region}-${AWS::AccountId}-${AWS::NoValue}
+
+  AlbumApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: prod
+      Description: Production Stage
+      RestApiId: !Ref AlbumApi
+      DeploymentId: !Ref AlbumApiDeployment
