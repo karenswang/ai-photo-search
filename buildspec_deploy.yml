@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Checking for AWS CLI...
+      - aws --version || (echo Installing AWS CLI... && apt-get update && apt-get install -y awscli)
+
+  pre_build:
+    commands:
+      - echo Preparing to deploy Lambda functions...
+  build:
+    commands:
+      - echo Deploying Lambda functions...
+      - aws lambda update-function-code --function-name index-photos --zip-file fileb://LF1.zip
+      - aws lambda update-function-code --function-name search-photos --zip-file fileb://LF2.zip
+  post_build:
+    commands:
+      - echo Deployment completed.
+
+artifacts:
+  files:
+    - LF1.zip
+    - LF2.zip
