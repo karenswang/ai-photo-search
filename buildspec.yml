@@ -20,4 +20,5 @@ artifacts:
   files:
     - LF1.zip
     - LF2.zip
+    - buildspec_deploy.yml
 
