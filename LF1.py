@@ -3,8 +3,12 @@ import json
 import os
 from datetime import datetime
 from botocore.exceptions import ClientError
-import requests
+from opensearchpy import OpenSearch, RequestsHttpConnection
+from requests_aws4auth import AWS4Auth
 
+REGION = 'us-east-1'
+HOST = 'search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com'
+INDEX = 'photos'
 
 def lambda_handler(event, context):
     rekognition = boto3.client('rekognition')
@@ -45,6 +49,21 @@ def lambda_handler(event, context):
         'createdTimestamp': datetime.now().isoformat(),
         'labels': labels
     }
+    
+    try:
+        client = OpenSearch(hosts=[{
+            'host': HOST,
+            'port': 443
+        }],
+                            http_auth=get_awsauth(REGION, 'es'),
+                            use_ssl=True,
+                            verify_certs=True,
+                            connection_class=RequestsHttpConnection)
+        
+        client.indices.create(index=INDEX, body=document)
+        print("Indexing successful:", document)
+    except Exception as e:
+        print("An error occurred:", str(e))
 
     # # # Index the document in OpenSearch
     # index_response = opensearch.index(
@@ -55,77 +74,36 @@ def lambda_handler(event, context):
     
     
     # Index the document in OpenSearch Service (Amazon Elasticsearch)
-    opensearch_endpoint = "https://search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com"
-    index_name = "photos"
+    # opensearch_endpoint = "https://search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com"
+    # index_name = "photos"
     
-    bulk_request_body = json.dumps({"index": {"_index": index_name}}) + "\n"
-    bulk_request_body += json.dumps(existing_document) + "\n"
+    # bulk_request_body = json.dumps({"index": {"_index": index_name}}) + "\n"
+    # bulk_request_body += json.dumps(document) + "\n"
     
-    try:
-        # Send the bulk index request to OpenSearch
-        response = requests.post(
-            f"{opensearch_endpoint}/{index_name}/_bulk",
-            headers={"Content-Type": "application/json"},
-            data=bulk_request_body
-        )
+    # try:
+    #     # Send the bulk index request to OpenSearch
+    #     response = requests.post(
+    #         f"{opensearch_endpoint}/{index_name}/_bulk",
+    #         headers={"Content-Type": "application/json"},
+    #         data=bulk_request_body
+    #     )
         
-    # Process the response
-        if response.status_code == 200:
-            result = json.loads(response.text)
-            print("Bulk indexing of existing document successful:", result)
-        else:
-            print("Bulk indexing of existing document failed with status code:", response.status_code)
-            print("Response content:", response.text)
-    except Exception as e:
-        print("An error occurred:", str(e))
-        # Handle the error as needed
+    # # Process the response
+    #     if response.status_code == 200:
+    #         result = json.loads(response.text)
+    #         print("Bulk indexing of existing document successful:", result)
+    #     else:
+    #         print("Bulk indexing of existing document failed with status code:", response.status_code)
+    #         print("Response content:", response.text)
+    # except Exception as e:
+    #     print("An error occurred:", str(e))
+    #     # Handle the error as needed
 
 
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps(index_response)
-    # }
-
-# def lambda_handler(event, context):
-#     for record in event['Records']:
-#         bucket_name = record['s3']['bucket']['name']
-#         object_key = record['s3']['object']['key']
-        
-#         try:
-#             # Detect labels in the image using Rekognition
-#             response = rekognition.detect_labels(
-#                 Image={
-#                     'S3Object': {
-#                         'Bucket': bucket_name,
-#                         'Name': object_key
-#                     }
-#                 },
-#                 MaxLabels=10
-#             )
-#             labels = [label['Name'] for label in response['Labels']]
-
-#             # Retrieve custom labels from S3 metadata
-#             response = s3.head_object(Bucket=bucket_name, Key=object_key)
-#             custom_labels = response['Metadata'].get('x-amz-meta-customlabels', '').split(',')
-
-#             # Merge Rekognition labels and custom labels
-#             all_labels = list(set(labels + custom_labels))
-
-#             # Prepare the document to be indexed in OpenSearch
-#             document = {
-#                 'objectKey': object_key,
-#                 'bucket': bucket_name,
-#                 'createdTimestamp': datetime.now().isoformat(),
-#                 'labels': all_labels
-#             }
-
-#             # Index the document in OpenSearch
-#             es.index(index='photos', doc_type='_doc', body=json.dumps(document))
-
-#         except ClientError as e:
-#             print(f'Error processing object {object_key} from bucket {bucket_name}. Error: {e}')
-
-#     return {
-#         'statusCode': 200,
-#         'body': json.dumps('Processing complete')
-#     }
+def get_awsauth(region, service):
+    cred = boto3.Session().get_credentials()
+    return AWS4Auth(cred.access_key,
+                    cred.secret_key,
+                    region,
+                    service,
+                    session_token=cred.token)
