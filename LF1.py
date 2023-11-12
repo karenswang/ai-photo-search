@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 def lambda_handler(event, context):
     rekognition = boto3.client('rekognition')
     s3 = boto3.client('s3')
-    opensearch = boto3.client('opensearchservice') # es = boto3.client('es')
+    opensearch = boto3.client('opensearch') # es = boto3.client('es')
     
     print("event: ", event)
     print("context: ", context)
