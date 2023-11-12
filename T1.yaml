@@ -9,6 +9,11 @@ Description: Template to create resources for a photo album application
 #   LexBotAliasId:
 #     Type: String
 #     Description: The ID of the Lex bot alias
+Parameters:
+  DeploymentId:
+    Type: String
+    Default: "1"
+    Description: Increment this value to trigger a new deployment
 
 Resources:
   # OpenSearch
@@ -85,7 +90,7 @@ Resources:
     #           Resource: !Sub 'arn:aws:s3:::${PhotosBucket}/*'
     #           Condition:
     #             StringEquals:
-    #               'aws:SourceArn': !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AlbumApi}/*'
+    #               'aws:SourceArn': !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AIAlbumApi}/*'
   
   # TODO: create a bucket for hosting frontend code
 
@@ -178,10 +183,21 @@ Resources:
       FunctionName: !GetAtt SearchPhotosFunction.Arn
       Action: "lambda:InvokeFunction"
       Principal: "lexv2.amazonaws.com"
-      SourceArn: !Sub "arn:aws:lex:${AWS::Region}:${AWS::AccountId}:bot-alias/WRDYKDEUOV/SLVZYGVSIQ" # update botID/botAliasID whenever they change
+      # SourceArn: !Sub "arn:aws:lex:${AWS::Region}:${AWS::AccountId}:AlbumBotV1/WRDYKDEUOV/SLVZYGVSIQ" # update botID/botAliasID whenever they change
+  
+  # Permission for API Gateway to invoke the Lambda function
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt SearchPhotosFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      # Optional: If you're using a specific source ARN
+      # SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${YourApiId}/*/*/search"
+
 
   # API Gateway
-  AlbumApi:
+  AIAlbumApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: AI Photo Search API
@@ -197,6 +213,12 @@ Resources:
         basePath: /v1
         produces:
           - application/json
+        # securityDefinitions:
+        # TODO add key
+        # api_key:
+        #   type: apiKey
+        #   name: x-api-key
+        #   in: header
         paths:
           /search:
             get:
@@ -206,7 +228,7 @@ Resources:
               operationId: searchPhotos
               parameters:
                 - in: query
-                  name: q
+                  name: keyword
                   schema:
                     type: string
                   description: the string to be searched
@@ -270,6 +292,8 @@ Resources:
                         application/json: ""
           /upload:
             put:
+              # security:
+              #   - api_key: 1lLTkF5GO8JMkV538fSJaBof6a9WO4V7hL9RHnV2
               summary: photo upload method
               description: |
                 This API takes in the multi-part body sent to it (ex. a photo) and uploads it to an S3 bucket.
@@ -372,30 +396,60 @@ Resources:
               message:
                 type: string
 
-  AlbumApiKey:
+  AIAlbumApiKey:
     Type: AWS::ApiGateway::ApiKey
     Properties:
-      Name: AlbumApiKey
+      Name: AIAlbumApiKey
       Enabled: true
 
-  # AlbumApiUsagePlan:
+  # AIAlbumApiUsagePlan:
   #   Type: AWS::ApiGateway::UsagePlan
   #   Properties:
   #     ApiStages:
-  #       - ApiId: !Ref AlbumApi
+  #       - ApiId: !Ref AIAlbumApi
   #         Stage: prod
   #     Description: Usage plan for my API
-  #     UsagePlanName: AlbumApiUsagePlan
+  #     UsagePlanName: AIAlbumApiUsagePlan
   #     ApiKeyIds:
-  #       - !Ref AlbumApiKey
+  #       - !Ref AIAlbumApiKey
 
-  AlbumApiDeployment:
+  AIAlbumApiDeployment:
     Type: AWS::ApiGateway::Deployment
-    DependsOn: AlbumApi
+    DependsOn: AIAlbumApi
     Properties:
-      RestApiId: !Ref AlbumApi
+      RestApiId: !Ref AIAlbumApi
       StageName: prod
-    # Optional: use a timestamp to ensure that a new deployment is created when the stack is updated
-    # Metadata:
-    #   DeploymentTimestamp: !Sub ${AWS::StackName}-${AWS::Region}-${AWS::AccountId}-${AWS::NoValue}
+    # manually control the deployment of the API
+    Metadata:
+      DeploymentId: !Ref DeploymentId
 
+  # ApiGatewayCloudWatchLogsRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: "Allow"
+  #           Principal:
+  #             Service: "apigateway.amazonaws.com"
+  #           Action: "sts:AssumeRole"
+  #     ManagedPolicyArns:
+  #       - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+  # AIAlbumApiStage:
+  #   Type: AWS::ApiGateway::Stage
+  #   DependsOn: AIAlbumApiDeployment
+  #   Properties:
+  #     MethodSettings:
+  #       - LoggingLevel: ERROR  # or INFO for more detailed logs
+  #         ResourcePath: '/*'
+  #         HttpMethod: '*'
+  #         DataTraceEnabled: true
+  #         MetricsEnabled: true
+  #     AccessLogSetting:
+  #       DestinationArn: "arn:aws:logs:us-east-1:488249905444:log-group:AIAlbumApi:*"
+  #       # Format: '... log format ...'  
+  #     RestApiId: !Ref AIAlbumApi
+  #     DeploymentId: !Ref AIAlbumApiDeployment
+  #     StageName: 'prod'
+  #     TracingEnabled: true

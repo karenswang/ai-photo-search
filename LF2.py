@@ -5,10 +5,10 @@ import os
 # check out LF0 for reference 
 
 lex = boto3.client('lexv2-runtime')
-opensearch = boto3.client('opensearchservice')
+opensearch = boto3.client('opensearch')
 
 def lambda_handler(event, context):
-    query_from_user = event['queryStringParameters']['q']
+    query_from_user = event['queryStringParameters']['keyword']
 
     # Disambiguate the query using Amazon Lex
     # lex_response = lex.post_text(
