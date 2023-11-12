@@ -174,7 +174,18 @@ Resources:
                 Action:
                   - "s3:PutObject"
                   - "s3:GetObject"
-                Resource: "arn:aws:s3:::YourBucketName/*"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        # - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+
   
   # Permission for Lex to invoke the Lambda function
   LambdaPermissionForLex:
@@ -255,6 +266,11 @@ Resources:
                   default:
                     statusCode: "200"
                 passthroughBehavior: "when_no_match"
+                requestTemplates:
+                  application/json: |
+                    {
+                      "keyword": "$input.params('keyword')"
+                    }
                 httpMethod: "POST"
                 type: "aws"
               # Enable CORS
@@ -290,7 +306,7 @@ Resources:
                         method.response.header.Access-Control-Allow-Origin: "'*'"
                       responseTemplates:
                         application/json: ""
-          /upload:
+          /upload/{objectKey}:
             put:
               # security:
               #   - api_key: 1lLTkF5GO8JMkV538fSJaBof6a9WO4V7hL9RHnV2
@@ -306,6 +322,11 @@ Resources:
                 - application/json
               # allow user specified labels
               parameters:
+                - in: path
+                  name: objectKey
+                  type: string
+                  required: true
+                  description: Filename of the image being uploaded
                 - in: header
                   name: x-amz-meta-customLabels
                   type: string
@@ -328,7 +349,9 @@ Resources:
               x-amazon-apigateway-integration:
                 credentials: !GetAtt ApiGatewayS3Role.Arn
                 uri: 
-                  Fn::Sub: "arn:aws:apigateway:${AWS::Region}:s3:path/${PhotosBucket}"
+                  Fn::Sub:
+                    - "arn:aws:apigateway:${AWS::Region}:s3:path/${PhotosBucket}/{objectKey}"
+                    - PhotosBucket: !Ref PhotosBucket
                 responses:
                   default:
                     statusCode: "200"
@@ -336,6 +359,7 @@ Resources:
                 # allow custom labels to be passed to S3
                 requestParameters:
                   integration.request.header.x-amz-meta-customLabels: "method.request.header.x-amz-meta-customLabels"
+                  integration.request.path.objectKey: "method.request.path.objectKey"
                 httpMethod: "PUT"
                 type: "aws"
               # Enable CORS

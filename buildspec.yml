@@ -5,15 +5,20 @@ phases:
     runtime-versions:
       python: 3.11 
     commands:
-      # - echo Installing source dependencies...
-      # TODO: install dependencies, currently functions don't seem to contain external dependencies needed
-      # - pip install -r requirements.txt -t ./build/
+      - echo Installing source dependencies...
+      # Install dependencies for each Lambda function
+      - pip install -r LF1_requirements.txt -t LF1_package/
+      - pip install -r LF2_requirements.txt -t LF2_package/
 
   build:
     commands:
       - echo Build phase...
-      - zip LF1.zip LF1.py
-      - zip LF2.zip LF2.py
+      # Add the Lambda function code to the packages
+      - cp LF1.py LF1_package/
+      - cp LF2.py LF2_package/
+      # Zip the packages including dependencies
+      - cd LF1_package && zip -r ../LF1.zip . && cd ..
+      - cd LF2_package && zip -r ../LF2.zip . && cd ..
       - echo "Build completed."
 
 artifacts:
