@@ -10,6 +10,9 @@ def lambda_handler(event, context):
     s3 = boto3.client('s3')
     opensearch = boto3.client('opensearchservice') # es = boto3.client('es')
     
+    print("event: ", event)
+    print("context: ", context)
+        
     # Get bucket name and object key from the S3 event
     bucket = event['Records'][0]['s3']['bucket']['name']
     object_key = event['Records'][0]['s3']['object']['key']
