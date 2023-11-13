@@ -1,8 +1,5 @@
 import boto3
-import json
-import os
 from datetime import datetime
-from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 
@@ -60,45 +57,13 @@ def lambda_handler(event, context):
                             verify_certs=True,
                             connection_class=RequestsHttpConnection)
         
-        client.indices.create(index=INDEX, body=document)
-        print("Indexing successful:", document)
+        if not client.indices.exists(index=INDEX):
+            client.indices.create(index=INDEX, body={})
+            
+        index_response = client.index(index=INDEX, body=document)
+        print("Document indexed:", document)
     except Exception as e:
         print("An error occurred:", str(e))
-
-    # # # Index the document in OpenSearch
-    # index_response = opensearch.index(
-    #     Index='photos',
-    #     Body=json.dumps(document)
-    # )
-    # opensearch.index(index='photos', doc_type='_doc', body=document)
-    
-    
-    # Index the document in OpenSearch Service (Amazon Elasticsearch)
-    # opensearch_endpoint = "https://search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com"
-    # index_name = "photos"
-    
-    # bulk_request_body = json.dumps({"index": {"_index": index_name}}) + "\n"
-    # bulk_request_body += json.dumps(document) + "\n"
-    
-    # try:
-    #     # Send the bulk index request to OpenSearch
-    #     response = requests.post(
-    #         f"{opensearch_endpoint}/{index_name}/_bulk",
-    #         headers={"Content-Type": "application/json"},
-    #         data=bulk_request_body
-    #     )
-        
-    # # Process the response
-    #     if response.status_code == 200:
-    #         result = json.loads(response.text)
-    #         print("Bulk indexing of existing document successful:", result)
-    #     else:
-    #         print("Bulk indexing of existing document failed with status code:", response.status_code)
-    #         print("Response content:", response.text)
-    # except Exception as e:
-    #     print("An error occurred:", str(e))
-    #     # Handle the error as needed
-
 
 def get_awsauth(region, service):
     cred = boto3.Session().get_credentials()

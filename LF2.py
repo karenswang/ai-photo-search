@@ -1,14 +1,20 @@
 import boto3
 import json
-import os
+from opensearchpy import OpenSearch, RequestsHttpConnection
+from requests_aws4auth import AWS4Auth
+
+REGION = 'us-east-1'
+HOST = 'search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com'
+INDEX = 'photos'
 
 # check out LF0 for reference 
 
-lex = boto3.client('lexv2-runtime')
-opensearch = boto3.client('opensearch')
-
 def lambda_handler(event, context):
-    query_from_user = event['queryStringParameters']['keyword']
+    # query_from_user = event['queryStringParameters']['keyword']
+    query_from_user = event['keyword'] # keyword here can be a sentence
+    
+    lex = boto3.client('lexv2-runtime')
+    opensearch = boto3.client('opensearch')
 
     # Disambiguate the query using Amazon Lex
     # lex_response = lex.post_text(
@@ -25,13 +31,56 @@ def lambda_handler(event, context):
         sessionId='testuser',
         text=query_from_user)
 
+    print(lex_response)
+    
+    
     # Extract keywords from Lex response
-    keywords_from_lex = lex_response.get('slots', {}).values()
+    slots = lex_response.get('sessionState', {}).get('intent', {}).get('slots', {})
+    # For Keyword1, which is mandatory
+    keyword1 = slots.get('Keyword1', {}).get('value', {}).get('interpretedValue', '')
+    # For optional Keyword2
+    keyword2_slot = slots.get('Keyword2', {})
+    if keyword2_slot and 'value' in keyword2_slot:
+        keyword2 = keyword2_slot['value'].get('interpretedValue', '')
+    else:
+        keyword2 = ''
+    
+    # Combine keywords, filtering out empty ones
+    keywords_from_lex = [keyword for keyword in [keyword1, keyword2] if keyword]
+    print(keywords_from_lex)
+    
+    try:
+        # Search in OpenSearch if keywords are present
+        if keywords_from_lex:
+            results = query(keywords_from_lex)
+        else:
+            results = []
+    except Exception as e:
+        print("An error occurred:", str(e))
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'results': results})
+    }
+    
+    
+def query(keywords):
+    search_query = ' OR '.join(keywords)
 
-    # Search in OpenSearch if keywords are present
-    if keywords_from_lex:
-        search_query = ' OR '.join(keywords_from_lex)
-        search_response = opensearch.search(
+    client = OpenSearch(hosts=[{
+        'host': HOST,
+        'port': 443
+    }],
+                        http_auth=get_awsauth(REGION, 'es'),
+                        use_ssl=True,
+                        verify_certs=True,
+                        connection_class=RequestsHttpConnection)
+
+    search_response = client.search(
             Index='photos',
             Body={
                 'query': {
@@ -42,14 +91,24 @@ def lambda_handler(event, context):
                 }
             }
         )
-        results = search_response['hits']['hits']
-    else:
-        results = []
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps({'results': results})
-    }
+    print(search_response)
+
+    hits = search_response['hits']['hits']
+    results = []
+    for hit in hits:
+        results.append(hit['_source'])
+
+    return results
+    
+    
+def get_awsauth(region, service):
+    cred = boto3.Session().get_credentials()
+    return AWS4Auth(cred.access_key,
+                    cred.secret_key,
+                    region,
+                    service,
+                    session_token=cred.token)
 
 
 # import boto3
@@ -98,3 +157,5 @@ def lambda_handler(event, context):
 #         'statusCode': 200,
 #         'body': json.dumps({'results': results})
 #     }
+
+
