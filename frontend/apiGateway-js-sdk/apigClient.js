@@ -122,12 +122,12 @@ apigClientFactory.newClient = function (config) {
     apigClient.uploadObjectKeyPut = function (params, body, additionalParams) {
         if(additionalParams === undefined) { additionalParams = {}; }
         
-        apiGateway.core.utils.assertParametersDefined(params, ['Content-Type', 'objectKey', 'x-amz-meta-customLabels'], ['body']);
+        apiGateway.core.utils.assertParametersDefined(params, ['objectKey', 'x-amz-meta-customLabels'], ['body']);
         
         var uploadObjectKeyPutRequest = {
             verb: 'put'.toUpperCase(),
             path: pathComponent + uritemplate('/upload/{objectKey}').expand(apiGateway.core.utils.parseParametersToObject(params, ['objectKey', ])),
-            headers: apiGateway.core.utils.parseParametersToObject(params, ['Content-Type', 'x-amz-meta-customLabels']),
+            headers: apiGateway.core.utils.parseParametersToObject(params, ['x-amz-meta-customLabels']),
             queryParams: apiGateway.core.utils.parseParametersToObject(params, []),
             body: body
         };

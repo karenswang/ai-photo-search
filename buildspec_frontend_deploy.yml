@@ -1,16 +1,17 @@
-version: 0.2
+# Since this is only one line, it's now handled by manually adding the command in the CodeBuild console
+# version: 0.2
 
-phases:
-  pre_build:
-    commands:
-      - echo "Starting deployment..."
-  build:
-    commands:
-      - aws s3 sync . s3://aiphotoalbumfrontendbucket/ 
-  post_build:
-    commands:
-      - echo "Deployment completed."
+# phases:
+#   pre_build:
+#     commands:
+#       - echo "Starting deployment..."
+#   build:
+#     commands:
+#       - aws s3 sync . s3://aiphotoalbumfrontendbucket/ 
+#   post_build:
+#     commands:
+#       - echo "Deployment completed."
 
-artifacts:
-  files:
-    - NONE
+# artifacts:
+#   files:
+#     - NONE

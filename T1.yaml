@@ -246,16 +246,17 @@ Resources:
         basePath: /v1
         produces:
           - application/json
-        # securityDefinitions:
-        # TODO add key
-        # api_key:
-        #   type: apiKey
-        #   name: x-api-key
-        #   in: header
+        securityDefinitions:
+          ApiKeyAuth:
+            type: apiKey
+            name: x-api-key
+            in: header
         paths:
           /search:
             get:
               summary: photo search method
+              security:
+                - ApiKeyAuth: []
               description: |
                 This API takes in a search query as a query parameter and returns zero or more photos that match the search query.
               operationId: searchPhotos
@@ -470,17 +471,38 @@ Resources:
     Properties:
       Name: AIAlbumApiKey
       Enabled: true
+      StageKeys:
+        - RestApiId: !Ref AIAlbumApi
+          StageName: prod
 
-  # AIAlbumApiUsagePlan:
-  #   Type: AWS::ApiGateway::UsagePlan
+  AIAlbumApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId: !Ref AIAlbumApi
+          Stage: prod
+      Description: Usage plan for my API
+      UsagePlanName: "AIAlbumUsagePlan"
+      Throttle:
+        BurstLimit: 100
+        RateLimit: 50
+
+  # Usage Plan Key
+  AIAlbumUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref AIAlbumApiKey
+      KeyType: "API_KEY"
+      UsagePlanId: !Ref AIAlbumApiUsagePlan
+  
+  # API Gateway Stage
+  # AIAlbumApiStage:
+  #   Type: AWS::ApiGateway::Stage
   #   Properties:
-  #     ApiStages:
-  #       - ApiId: !Ref AIAlbumApi
-  #         Stage: prod
-  #     Description: Usage plan for my API
-  #     UsagePlanName: AIAlbumApiUsagePlan
-  #     ApiKeyIds:
-  #       - !Ref AIAlbumApiKey
+  #     RestApiId: !Ref AIAlbumApi
+  #     DeploymentId: !Ref AIAlbumApiDeployment
+  #     StageName: "prod"
+
 
   AIAlbumApiDeployment:
     Type: AWS::ApiGateway::Deployment
