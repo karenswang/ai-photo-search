@@ -1,7 +1,12 @@
 import boto3
+import json
+import os
 from datetime import datetime
+from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+import base64
+
 
 REGION = 'us-east-1'
 HOST = 'search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com'
@@ -10,24 +15,36 @@ INDEX = 'photos'
 def lambda_handler(event, context):
     rekognition = boto3.client('rekognition')
     s3 = boto3.client('s3')
-    opensearch = boto3.client('es') # es = boto3.client('es')
-    
+
     print("event: ", event)
         
     # Get bucket name and object key from the S3 event
     bucket = event['Records'][0]['s3']['bucket']['name']
     object_key = event['Records'][0]['s3']['object']['key']
 
-    # Detect labels using Rekognition
-    response = rekognition.detect_labels(
-        Image={
-            'S3Object': {
-                'Bucket': bucket,
-                'Name': object_key
-            }
-        }
-        # MaxLabels=10
-    )
+
+    # # Get the image object from S3
+    s3_object = s3.get_object(Bucket=bucket, Key=object_key)
+    # # Read the object data as a string
+    image_data_url = s3_object['Body'].read().decode('utf-8')
+    # # Extract the base64-encoded image data from the Data URL
+    base64_image_data = image_data_url.split("base64,")[1]
+    # # Decode the base64-encoded image
+    image_data_bytes = base64.b64decode(base64_image_data)
+    # # Detect labels using Rekognition with the image byte array
+    response = rekognition.detect_labels(Image={'Bytes': image_data_bytes})
+
+
+    # # Detect labels using Rekognition
+    # response = rekognition.detect_labels(
+    #     Image={
+    #         'S3Object': {
+    #             'Bucket': bucket,
+    #             'Name': object_key
+    #         }
+    #     }
+    #     # MaxLabels=10
+    # )
 
     # Extract labels
     labels = [label['Name'] for label in response['Labels']]
@@ -62,6 +79,18 @@ def lambda_handler(event, context):
             
         index_response = client.index(index=INDEX, body=document)
         print("Document indexed:", document)
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                # Add other necessary CORS headers here
+            },
+            'body': json.dumps({
+                'message': 'Upload successful',
+                'objectKey': object_key,
+                'bucket': bucket
+            })
+        }
     except Exception as e:
         print("An error occurred:", str(e))
 

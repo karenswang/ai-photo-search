@@ -62,14 +62,19 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
     
+    formatted_response = {"results": results}
     return {
         'statusCode': 200,
-        'body': json.dumps({'results': results})
+        'headers': {
+                'Access-Control-Allow-Origin': '*',
+                # Add other necessary CORS headers here
+            },
+        'body': json.dumps(formatted_response)
     }
-    
+
     
 def query(keywords):
-    search_query = ' OR '.join(keywords)
+    search_query = ' AND '.join(keywords)
 
     client = OpenSearch(hosts=[{
         'host': HOST,
@@ -81,8 +86,8 @@ def query(keywords):
                         connection_class=RequestsHttpConnection)
 
     search_response = client.search(
-            Index='photos',
-            Body={
+            index='photos',
+            body={
                 'query': {
                     'multi_match': {
                         'query': search_query,
@@ -97,7 +102,23 @@ def query(keywords):
     hits = search_response['hits']['hits']
     results = []
     for hit in hits:
-        results.append(hit['_source'])
+        source = hit['_source']
+        bucket = source.get('bucket')
+        objectKey = source.get('objectKey')
+        
+        # Return a pre-signed photo URL for frontend rendering
+        # photo_url = f'https://{bucket}.s3.amazonaws.com/{objectKey}'
+        s3_client = boto3.client('s3')
+        presigned_url = s3_client.generate_presigned_url('get_object',
+                                                 Params={'Bucket': bucket,
+                                                         'Key': objectKey},
+                                                 ExpiresIn=3600)  # URL expires in 1 hour
+
+        photo_object = {
+            "url": presigned_url,
+            "labels": source.get('labels', [])
+        }
+        results.append(photo_object)
 
     return results
     
@@ -109,53 +130,3 @@ def get_awsauth(region, service):
                     region,
                     service,
                     session_token=cred.token)
-
-
-# import boto3
-# import json
-# from botocore.exceptions import ClientError
-
-# def lambda_handler(event, context):
-#     lex = boto3.client('lex-runtime')
-#     es = boto3.client('es')
-
-#     query = event.get('queryStringParameters', {}).get('q', '')
-
-#     try:
-#         # Send the query to Lex for processing
-#         lex_response = lex.post_text(
-#             botName='YourBotName', # Replace with your bot name
-#             botAlias='YourBotAlias', # Replace with your bot alias
-#             userId='user-id', # A unique ID for the user
-#             inputText=query
-#         )
-
-#         # Extract keywords from Lex response (adapt based on your Lex setup)
-#         keywords = lex_response.get('slots', {}).values()
-
-#         # Search OpenSearch with the keywords
-#         search_query = ' '.join(keywords)
-#         es_response = es.search(
-#             index='photos',
-#             body={
-#                 'query': {
-#                     'match': {
-#                         'labels': search_query
-#                     }
-#                 }
-#             }
-#         )
-
-#         # Extract and format the search results
-#         results = [hit['_source'] for hit in es_response['hits']['hits']]
-
-#     except ClientError as e:
-#         print(f'Error: {e}')
-#         results = []
-
-#     return {
-#         'statusCode': 200,
-#         'body': json.dumps({'results': results})
-#     }
-
-

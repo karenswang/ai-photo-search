@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Starting deployment..."
+  build:
+    commands:
+      - aws s3 sync $CODEBUILD_SRC_DIR/artifacts/ s3://aiphotoalbumfrontendbucket/ # Replace with your S3 bucket name
+  post_build:
+    commands:
+      - echo "Deployment completed."
+
+artifacts:
+  files:
+    - NONE

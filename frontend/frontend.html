@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Search</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa; /* Light gray background */
+            font-family: Arial, sans-serif; /* Set a font */
+        }
+        .container {
+            padding-top: 50px;
+        }
+        #searchBarContainer {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        #voiceResult {
+            margin-top: 10px; /* Adjust the top margin as needed */
+            text-align: center;
+        }
+        #searchInput {
+            width: calc(100% - 48px); /* Adjust width considering padding and button */
+            padding: 10px 20px;
+            padding-right: 50px; /* Space for microphone icon */
+            border: 1px solid #dcdcdc;
+            border-radius: 50px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        #micButton {
+            position: absolute;
+            right: 110px; /* Align button with the input field */
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            outline: none; 
+            width: 30px; /* Set the button width */
+            height: 40px;/* Remove focus border */
+        }
+        
+        #micIcon {
+            width: 100%; /* Slightly larger microphone icon */
+            height: auto;
+        }
+        .upload-section, .search-results-section {
+            margin-bottom: 40px; /* Add some space before the next section */
+        }
+        .custom-file, .input-group {
+            margin-bottom: 20px; /* Add some space below input fields */
+        }
+        .custom-file-label, .input-group-text {
+            border-radius: 50px; /* Rounded borders for a consistent look */
+        }
+        .btn-primary {
+            border-radius: 50px; /* Rounded borders for buttons */
+        }
+        #searchBarContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #searchInput {
+            padding: 10px;
+            margin-right: 10px; /* Space between input and button */
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        #searchButton {
+            padding: 10px 20px;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        #searchButton:hover {
+            background-color: #0056b3;
+        }
+
+        .result-img {
+            max-width: 100px;
+            max-height: 200px;
+            width: auto;
+            height: auto;
+        }
+        
+    </style>
+</head>
+<body>
+
+
+
+
+<!-- Include the API Gateway SDK -->
+<script src="./apiGateway-js-sdk/lib/axios/dist/axios.standalone.js"></script>
+<script src="./apiGateway-js-sdk/lib/url-template/url-template.js"></script>
+<script src="./apiGateway-js-sdk/apigClient.js"></script>
+
+<script src="./apiGateway-js-sdk/lib/apiGatewayCore/apiGatewayClient.js"></script>
+<script src="./apiGateway-js-sdk/lib/apiGatewayCore/utils.js"></script>
+<script src="./apiGateway-js-sdk/lib/apiGatewayCore/sigV4Client.js"></script>
+<script src="./apiGateway-js-sdk/lib/apiGatewayCore/simpleHttpClient.js"></script>
+
+<div class="container">
+    <h1 class="text-center mb-4">Photo Search</h1>
+
+    <div id="searchBarContainer" class="mb-5">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search for photos...">
+        <button id="searchButton">Search</button>
+
+        <button id="micButton">
+            <img id="micIcon" src="microphone-solid.svg" alt="Voice Search" />
+        </button>
+    </div>
+    <div id="voiceResult" class="text-center"></div>
+    
+    <div class="upload-section">
+        <h2>Upload a Photo</h2>
+        <form id="uploadForm">
+            <div class="custom-file">
+                <input type="file" id="photoInput" class="custom-file-input" accept="image/*">
+                <label class="custom-file-label" for="photoInput">Choose File</label>
+            </div>
+            <div class="input-group">
+                <input type="text" id="customLabelsInput" class="form-control" placeholder="Custom Labels (comma-separated)">
+                <div class="input-group-append">
+                    <button id="uploadButton" type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+        </form>
+        <p id="uploadedFileName"></p> <!-- Element to display uploaded file name -->
+    </div>
+    <img id="imagePreview" style="width: 100px; height: 100px;" />
+
+    
+
+    <div class="search-results-section">
+        <h2>Search Results</h2>
+        <div id="results"></div>
+    </div>
+</div>
+<script src="asset/search.js"></script>
+<script src="asset/upload.js"></script>
+<script>
+
+
+    // Event listener for text search input
+//    document.getElementById('searchInput').addEventListener('keypress', function (event) {
+//        if (event.key === 'Enter') {
+//          const query = event.target.value;
+//            apigClient.searchGet({q: query}).then(function (response) {
+//                displaySearchResults(response.data);
+//            }).catch(function (error) {
+//                console.error('API Call Error:', error);
+//            });
+//        }
+//    });
+
+
+
+
+
+</script>
+
+
+</body>
+</html>

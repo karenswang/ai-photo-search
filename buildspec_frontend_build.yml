@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Installing necessary packages"
+  pre_build:
+    commands:
+      - echo "Copying frontend files..."
+  build:
+    commands:
+      - cp -r frontend/* $CODEBUILD_SRC_DIR/artifacts/
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: artifacts

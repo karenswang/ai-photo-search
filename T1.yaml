@@ -107,6 +107,29 @@ Resources:
             Action: "s3:PutObject"
             Resource: !Sub "arn:aws:s3:::${PhotosBucket}/*"
 
+  FrontendHostingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 'aiphotoalbumfrontendbucket'
+      WebsiteConfiguration:
+        IndexDocument: 'frontend.html'
+        # ErrorDocument: 'error.html'
+
+  # # Bucket policy to make the frontend bucket publicly readable
+  # FrontendBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref FrontendHostingBucket
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: "*"
+  #           Action: 
+  #             - 's3:GetObject'
+  #           Resource: !Sub 'arn:aws:s3:::${FrontendHostingBucket}/*'
+
+
   # provision permission for S3 to invoke LF1 (indexing)
   LambdaPermissionForS3:
     Type: AWS::Lambda::Permission
@@ -138,8 +161,9 @@ Resources:
               - Effect: "Allow"
                 Action: 
                   - "es:*"
-                  - "s3:GetObject"
-                  - "s3:ListBucket"
+                  # - "s3:GetObject"
+                  # - "s3:ListBucket"
+                  - "s3:*"
                   - "rekognition:DetectLabels"
                 Resource: "*"
         # Lex permissions
@@ -273,39 +297,45 @@ Resources:
                     }
                 httpMethod: "POST"
                 type: "aws"
-              # Enable CORS
-              options:
-                summary: CORS support
-                description: |
-                  Enable CORS by returning the correct headers
-                consumes:
-                  - application/json
-                produces:
-                  - application/json
+            # Enable CORS
+            options:
+              summary: CORS support
+              description: |
+                Enable CORS by returning the correct headers
+              parameters:
+                - in: query
+                  name: keyword
+                  schema:
+                    type: string
+                  description: the string to be searched
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              responses:
+                '200':
+                  description: Successful response
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              # mock response: return a predetermined response without forwarding the request to any backend service
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
                 responses:
-                  '200':
-                    description: Successful response
-                    headers:
-                      Access-Control-Allow-Origin:
-                        type: string
-                      Access-Control-Allow-Methods:
-                        type: string
-                      Access-Control-Allow-Headers:
-                        type: string
-                # mock response: return a predetermined response without forwarding the request to any backend service
-                x-amazon-apigateway-integration:
-                  type: "mock"
-                  requestTemplates:
-                    application/json: "{\"statusCode\": 200}"
-                  responses:
-                    default:
-                      statusCode: "200"
-                      responseParameters:
-                        method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-                        method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                        method.response.header.Access-Control-Allow-Origin: "'*'"
-                      responseTemplates:
-                        application/json: ""
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: ""
           /upload/{objectKey}:
             put:
               # security:
@@ -332,6 +362,11 @@ Resources:
                   type: string
                   required: false
                   description: Custom labels specified by the user
+                # - in: header
+                #   name: Content-Type
+                #   type: string
+                #   required: true
+                #   description: Content type of the image being uploaded
               responses:
                 '200':
                   description: S3 PUT operation response
@@ -360,40 +395,52 @@ Resources:
                 requestParameters:
                   integration.request.header.x-amz-meta-customLabels: "method.request.header.x-amz-meta-customLabels"
                   integration.request.path.objectKey: "method.request.path.objectKey"
+                  # integration.request.header.Content-Type: "method.request.header.Content-Type"
                 httpMethod: "PUT"
                 type: "aws"
-              # Enable CORS
-              options:
-                summary: CORS support
-                description: Enable CORS by returning the correct headers
-                consumes:
-                  - application/json
-                produces:
-                  - application/json
+            # Enable CORS
+            options:
+              summary: CORS support
+              description: Enable CORS by returning the correct headers
+              parameters:
+                - in: path
+                  name: objectKey
+                  type: string
+                  required: true
+                  description: Filename of the image being uploaded
+                - in: header
+                  name: x-amz-meta-customLabels
+                  type: string
+                  required: false
+                  description: Custom labels specified by the user
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              responses:
+                '200':
+                  description: Successful response
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+              # mock response: return a predetermined response without forwarding the request to any backend service
+              x-amazon-apigateway-integration:
+                type: "mock"
+                requestTemplates:
+                  application/json: "{\"statusCode\": 200}"
                 responses:
-                  '200':
-                    description: Successful response
-                    headers:
-                      Access-Control-Allow-Origin:
-                        type: string
-                      Access-Control-Allow-Methods:
-                        type: string
-                      Access-Control-Allow-Headers:
-                        type: string
-                # mock response: return a predetermined response without forwarding the request to any backend service
-                x-amazon-apigateway-integration:
-                  type: "mock"
-                  requestTemplates:
-                    application/json: "{\"statusCode\": 200}"
-                  responses:
-                    default:
-                      statusCode: "200"
-                      responseParameters:
-                        method.response.header.Access-Control-Allow-Methods: "'PUT,OPTIONS'"
-                        method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-amz-meta-customLabels'"
-                        method.response.header.Access-Control-Allow-Origin: "'*'"
-                      responseTemplates:
-                        application/json: ""
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-amz-meta-customLabels'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: ""
         definitions:
           SearchResponse:
             type: object
