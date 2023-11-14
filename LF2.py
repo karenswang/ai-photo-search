@@ -2,6 +2,7 @@ import boto3
 import json
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+import inflection
 
 REGION = 'us-east-1'
 HOST = 'search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com'
@@ -45,8 +46,8 @@ def lambda_handler(event, context):
     else:
         keyword2 = ''
     
-    # Combine keywords, filtering out empty ones
-    keywords_from_lex = [keyword for keyword in [keyword1, keyword2] if keyword]
+    # Combine keywords, filtering out empty ones and singularize them
+    keywords_from_lex = [inflection.singularize(keyword) for keyword in [keyword1, keyword2] if keyword]
     print(keywords_from_lex)
     
     try:

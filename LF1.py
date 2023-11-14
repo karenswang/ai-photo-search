@@ -6,6 +6,7 @@ from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 import base64
+import inflection
 
 
 REGION = 'us-east-1'
@@ -47,14 +48,18 @@ def lambda_handler(event, context):
     # )
 
     # Extract labels
-    labels = [label['Name'] for label in response['Labels']]
+    # labels = [label['Name'] for label in response['Labels']]
+    labels = [inflection.singularize(label['Name']) for label in response['Labels']]
 
     # Get custom labels from S3 metadata if available
     metadata = s3.head_object(Bucket=bucket, Key=object_key)
     custom_labels = metadata.get('Metadata', {}).get('customlabels', '')
     # print("custom_labels:", custom_labels)
     if custom_labels:
-        labels.extend(custom_labels.split(','))
+        # labels.extend(custom_labels.split(','))
+        singularized_custom_labels = [inflection.singularize(label) for label in custom_labels.split(',')]
+        labels.extend(singularized_custom_labels)
+
 
     # Prepare the document to be indexed in OpenSearch
     document = {
