@@ -115,20 +115,18 @@ Resources:
         IndexDocument: 'frontend.html'
         # ErrorDocument: 'error.html'
 
-  # # Bucket policy to make the frontend bucket publicly readable
-  # FrontendBucketPolicy:
-  #   Type: AWS::S3::BucketPolicy
-  #   Properties:
-  #     Bucket: !Ref FrontendHostingBucket
-  #     PolicyDocument:
-  #       Version: '2012-10-17'
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal: "*"
-  #           Action: 
-  #             - 's3:GetObject'
-  #           Resource: !Sub 'arn:aws:s3:::${FrontendHostingBucket}/*'
-
+  FrontendHostingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendHostingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "PublicReadGetObject"
+            Effect: "Allow"
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${FrontendHostingBucket}/*"
 
   # provision permission for S3 to invoke LF1 (indexing)
   LambdaPermissionForS3:
