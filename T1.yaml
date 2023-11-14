@@ -75,6 +75,17 @@ Resources:
         LambdaConfigurations:
           - Event: "s3:ObjectCreated:Put"
             Function: !GetAtt IndexPhotosFunction.Arn # get the arn of the LF1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: ["PUT", "POST", "DELETE"]
+            AllowedOrigins: ["*"]
+          - AllowedHeaders: ["*"]
+            AllowedMethods: ["PUT", "POST", "DELETE"]
+            AllowedOrigins: ["*"]
+          - AllowedHeaders: []
+            AllowedMethods: ["GET"]
+            AllowedOrigins: ["*"]
     # # policy for this specific S3 bucket to open for API Gateway operations (put object)
     # BucketPolicy:
     #   Type: AWS::S3::BucketPolicy
@@ -114,6 +125,11 @@ Resources:
       WebsiteConfiguration:
         IndexDocument: 'frontend.html'
         # ErrorDocument: 'error.html'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
 
   FrontendHostingBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -127,7 +143,7 @@ Resources:
             Principal: "*"
             Action: "s3:GetObject"
             Resource: !Sub "arn:aws:s3:::${FrontendHostingBucket}/*"
-
+  
   # provision permission for S3 to invoke LF1 (indexing)
   LambdaPermissionForS3:
     Type: AWS::Lambda::Permission
@@ -150,6 +166,7 @@ Resources:
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # allows lambda to write logs to CloudWatch
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
       Policies:
         # S3, OpenSearch, Rekognition permissions
         - PolicyName: "LambdaOpenSearchS3RekognitionPolicy"
@@ -335,10 +352,26 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: ""
+                  # Default 4xx response
+                  '4\\d{2}':
+                    statusCode: '400'
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: "{\"message\": \"Client Error\"}"
+                  # Default 5xx response
+                  '5\\d{2}':
+                    statusCode: '500'
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: "{\"message\": \"Server Error\"}"
           /upload/{objectKey}:
             put:
-              # security:
-              #   - api_key: 1lLTkF5GO8JMkV538fSJaBof6a9WO4V7hL9RHnV2
               summary: photo upload method
               description: |
                 This API takes in the multi-part body sent to it (ex. a photo) and uploads it to an S3 bucket.
@@ -440,6 +473,25 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: ""
+                  # Default 4xx response
+                  '4\\d{2}':
+                    statusCode: '400'
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-amz-meta-customLabels'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: "{\"message\": \"Client Error\"}"
+                  # Default 5xx response
+                  '5\\d{2}':
+                    statusCode: '500'
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Methods: "'PUT,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,x-amz-meta-customLabels'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: "{\"message\": \"Server Error\"}"
+
         definitions:
           SearchResponse:
             type: object
