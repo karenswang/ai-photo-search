@@ -14,4 +14,5 @@ phases:
 artifacts:
   files:
     - '**/*'
+    - buildspec_frontend_deploy.yml
   base-directory: artifacts
