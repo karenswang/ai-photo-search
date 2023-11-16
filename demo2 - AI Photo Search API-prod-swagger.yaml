@@ -4,8 +4,8 @@ info:
   description: "AI Photo Search application, built during the Cloud and Big Data course\
     \ at Columbia University."
   version: "1.0.0"
-  title: "AI Photo Search API"
-host: "o17x6kubxe.execute-api.us-east-1.amazonaws.com"
+  title: "demo2 - AI Photo Search API"
+host: "80pf1bl248.execute-api.us-east-1.amazonaws.com"
 basePath: "/prod"
 schemes:
 - "https"
@@ -30,14 +30,32 @@ paths:
           headers:
             Access-Control-Allow-Origin:
               type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
         "500":
           description: "500 response"
           schema:
             $ref: "#/definitions/Error"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
         "403":
           description: "403 response"
           schema:
             $ref: "#/definitions/Error"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
       security:
       - api_key: []
     options:
@@ -53,6 +71,28 @@ paths:
       responses:
         "200":
           description: "200 response"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
+        "500":
+          description: "500 response"
+          schema:
+            $ref: "#/definitions/Error"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
+        "403":
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/Error"
           headers:
             Access-Control-Allow-Origin:
               type: "string"
@@ -78,18 +118,36 @@ paths:
         "200":
           description: "200 response"
           schema:
-            $ref: "#/definitions/MODELa553f4"
+            $ref: "#/definitions/MODEL874a37"
           headers:
             Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
               type: "string"
         "500":
           description: "500 response"
           schema:
             $ref: "#/definitions/Error"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
         "403":
           description: "403 response"
           schema:
             $ref: "#/definitions/Error"
+          headers:
+            Access-Control-Allow-Origin:
+              type: "string"
+            Access-Control-Allow-Methods:
+              type: "string"
+            Access-Control-Allow-Headers:
+              type: "string"
     options:
       consumes:
       - "application/json"
@@ -120,6 +178,8 @@ securityDefinitions:
     name: "x-api-key"
     in: "header"
 definitions:
+  MODEL874a37:
+    type: "object"
   Error:
     type: "object"
     properties:
@@ -137,8 +197,6 @@ definitions:
         type: "array"
         items:
           type: "string"
-  MODELa553f4:
-    type: "object"
   SearchResponse:
     type: "object"
     properties:
