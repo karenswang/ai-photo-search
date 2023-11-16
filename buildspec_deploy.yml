@@ -12,8 +12,8 @@ phases:
   build:
     commands:
       - echo Deploying Lambda functions...
-      - aws lambda update-function-code --function-name index-photos --zip-file fileb://LF1.zip
-      - aws lambda update-function-code --function-name search-photos --zip-file fileb://LF2.zip
+      - aws lambda update-function-code --function-name demo2-index-photos --zip-file fileb://LF1.zip
+      - aws lambda update-function-code --function-name demo2-search-photos --zip-file fileb://LF2.zip
   post_build:
     commands:
       - echo Deployment completed.
