@@ -66,7 +66,7 @@ function searchPhotos(searchKeyword) {
     var additionalParams = {
         headers: {
             'Content-Type': 'application/json',
-            'x-api-key': 'E24JaVbUqx5uCtifJE68k9Wjr0bXiUk85OdVQrx7'
+            'x-api-key': 'hcZj63iAqm1j7u0ZfI87C9foOzJBdbnhG35gAP8d'
         }
     };
 

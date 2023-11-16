@@ -5,7 +5,7 @@ from requests_aws4auth import AWS4Auth
 import inflection
 
 REGION = 'us-east-1'
-HOST = 'search-photos-h5rkn7iyx5ntfplwz52f3bzf5q.us-east-1.es.amazonaws.com'
+HOST = 'search-demo2-photos-uxovneewbmxppitcrg7pmc4llu.us-east-1.es.amazonaws.com'
 INDEX = 'photos'
 
 # check out LF0 for reference 
@@ -60,6 +60,11 @@ def lambda_handler(event, context):
         print("An error occurred:", str(e))
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,keyword'
+            },
             'body': json.dumps({'error': str(e)})
         }
     
@@ -68,7 +73,8 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'headers': {
                 'Access-Control-Allow-Origin': '*',
-                # Add other necessary CORS headers here
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,keyword'
             },
         'body': json.dumps(formatted_response)
     }
