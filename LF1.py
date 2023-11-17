@@ -10,7 +10,7 @@ import inflection
 
 
 REGION = 'us-east-1'
-HOST = 'search-demo2-photos-uxovneewbmxppitcrg7pmc4llu.us-east-1.es.amazonaws.com'
+HOST = 'search-demo-photos-66psilnxccef5kzoj2imqouqki.us-east-1.es.amazonaws.com'
 INDEX = 'photos'
 
 def lambda_handler(event, context):

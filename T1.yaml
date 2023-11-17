@@ -20,7 +20,7 @@ Resources:
   PhotosOpenSearchDomain: # logical ID
     Type: AWS::OpenSearchService::Domain
     Properties:
-      DomainName: 'demo2-photos'
+      DomainName: 'demo-photos'
       EngineVersion: 'OpenSearch_2.9'
       ClusterConfig:
         InstanceType: t3.small.search
@@ -37,13 +37,13 @@ Resources:
             Principal:
               AWS: !GetAtt LambdaExecutionRole.Arn
             Action: "es:*"
-            Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/demo2-photos/*"
+            Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/demo-photos/*"
   
   # LF1 for indexing photos
   IndexPhotosFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: "demo2-index-photos"
+      FunctionName: "demo-index-photos"
       Handler: "LF1.lambda_handler"
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: "python3.11"
@@ -56,7 +56,7 @@ Resources:
   SearchPhotosFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: "demo2-search-photos"
+      FunctionName: "demo-search-photos"
       Handler: "LF2.lambda_handler" 
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: "python3.11"
@@ -69,7 +69,7 @@ Resources:
   PhotosBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: 'demo2-photosalbumbucket'
+      BucketName: 'demo-photosalbumbucket'
       # Note: deploy this notification in a separate update to avoid circular reference
       NotificationConfiguration:
         LambdaConfigurations:
@@ -118,7 +118,7 @@ Resources:
   FrontendHostingBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: 'demo2-aiphotoalbumfrontendbucket'
+      BucketName: 'demo-aiphotoalbumfrontendbucket'
       WebsiteConfiguration:
         IndexDocument: 'frontend.html'
         # ErrorDocument: 'error.html'
@@ -247,7 +247,7 @@ Resources:
   AIAlbumApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: demo2 - AI Photo Search API
+      Name: demo - AI Photo Search API
       Body:
         # swagger file
         swagger: '2.0'
@@ -647,7 +647,7 @@ Resources:
   AIAlbumApiKey:
     Type: AWS::ApiGateway::ApiKey
     Properties:
-      Name: demo2-album-api-key
+      Name: demo-album-api-key
       Enabled: true
       StageKeys:
         - RestApiId: !Ref AIAlbumApi
@@ -660,7 +660,7 @@ Resources:
         - ApiId: !Ref AIAlbumApi
           Stage: prod
       Description: Usage plan for my API
-      UsagePlanName: "demo2-AIAlbumUsagePlan"
+      UsagePlanName: "demo-AIAlbumUsagePlan"
       Throttle:
         BurstLimit: 100
         RateLimit: 50
