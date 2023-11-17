@@ -17,7 +17,7 @@ def lambda_handler(event, context):
     rekognition = boto3.client('rekognition')
     s3 = boto3.client('s3')
 
-    print("event: ", event)
+    # print("event: ", event)
         
     # Get bucket name and object key from the S3 event
     bucket = event['Records'][0]['s3']['bucket']['name']
